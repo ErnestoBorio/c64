@@ -1,10 +1,11 @@
 package main
 
 import (
-	// "c64"
+	"go64/c64"
 	// "fmt"
 )
 
 
 func main() {
+	c64.Init()
 }
