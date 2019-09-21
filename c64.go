@@ -5,12 +5,16 @@ import (
 	"go64/cpu6502"
 )
 
-type word = uint16
+// Initialize package
+func init() {
+	loadRoms()
+}
 
 // Commodore 64 virtual machine
 type C64 struct {
 	CPU cpu6502.CPU
 	RAM [0x10000] byte
+	IO  [0x1000]  byte // WIP for now just store the bytes raw
 }
 
 // Package-stored ROMs for all instantiated C64s
@@ -21,7 +25,7 @@ var ROMs struct {
 }
 
 // Loads Basic, Chargen and Kernal ROMs
-func LoadRoms() {
+func loadRoms() {
 	romFile,_ := os.Open("/Users/petruza/Source/etc/go/src/go64/c64/roms/basic")
 	romFile.Read(ROMs.Basic[:])
 	romFile.Close()
@@ -35,23 +39,20 @@ func LoadRoms() {
 	romFile.Close()
 }
 
-// Initialize package
-func Init() {
-	LoadRoms()
-}
-
 // Initialize the C64 VM instance
 func (c64 *C64) Init() {
-	c64.CPU = cpu6502.CPU{}
 	c64.CPU.Init()
 	// hook the 6502 CPU with the C64 memory
 	c64.CPU.ReadMemory = c64.readMemory
 	c64.CPU.WriteMemory = c64.writeMemory
 
-	// Initial memory state
-	c64.RAM[0] = 0x2F // 00101111
-	c64.RAM[1] = 0x37 // 00110111
-	c64.RAM[0x800] = 0 // Unused. (Must contain a value of 0 so that the BASIC program can be RUN.)
+	// Initial RAM state
+	c64.RAM[0] = 0x2F // cpu port direction: 00101111
+	c64.RAM[1] = 0x37 // cpu port (bank switch): 00110111
+	c64.RAM[0x0800] = 0 // Unused (Must contain a value of 0 so that the BASIC program can be RUN)
+	
+	// IO Registers, 0xD000 .. 0xDFFF
+	c64.IO[0x016] = 0xC8; // Screen control register #2: 11001000
 }
 
 func (c64 *C64) Run() {
