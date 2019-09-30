@@ -9,7 +9,6 @@ func (c64 *C64) debug(msg string, address uint16, value byte) {
 }
 
 func (c64 *C64) readMemory(address uint16) byte {
-	c64.debug("Read ", address, 0)
 	switch {
 		case address <= 0x9FFF:
 			return c64.readRAM(address)
@@ -43,7 +42,6 @@ func (c64 *C64) readMemory(address uint16) byte {
 }
 
 func (c64 *C64) writeMemory(address uint16, value byte) {
-	c64.debug("Write", address, value)
 	switch {
 		case address >= 0xD000 && address <= 0xDFFF:
 			if c64.RAM[1] & 1 > 0 {

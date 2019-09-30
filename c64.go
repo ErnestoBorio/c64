@@ -54,12 +54,3 @@ func (c64 *C64) Init() {
 	// IO Registers, 0xD000 .. 0xDFFF
 	c64.IO[0x016] = 0xC8; // Screen control register #2: 11001000
 }
-
-func (c64 *C64) Run() {
-	c64.CPU.Reset()
-	// Main loop
-	for ;; {
-		/* cycles :=  */c64.CPU.Step()
-
-	}
-}
