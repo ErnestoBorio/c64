@@ -24,12 +24,12 @@ func (c64 *C64) Init() {
 	c64.CPU.Init(c64.readMemory, c64.writeMemory)
 
 	// Initial RAM state
-	c64.RAM[0] = 0x2F   // cpu port direction: 00101111
-	c64.RAM[1] = 0x37   // cpu port (bank switch): 00110111 (Basic, IO & Kernel)
-	c64.RAM[0x0800] = 0 // Unused (Must contain a value of 0 so that the BASIC program can be RUN)
+	c64.RAM[0] = 0b00101111 // cpu port direction
+	c64.RAM[1] = 0b00110111 // cpu port (bank switch) Basic, IO & Kernel switched on
+	c64.RAM[0x0800] = 0     // Unused (Must contain a value of 0 so that the BASIC program can be RUN)
 
 	// IO Registers, 0xD000 .. 0xDFFF
-	c64.IO[0x16] = 0xC8 // Screen control register #2: 11001000
+	c64.IO[0x16] = 0b11001000 // Screen control register #2
 }
 
 // Makes C64 set given address to execute next
@@ -39,20 +39,20 @@ func (c64 *C64) Jump(address uint16) {
 
 // Whether Basic ROM is switched on or not
 func (c64 *C64) isBasicOn() bool {
-	return c64.RAM[1]&3 == 3 // [$0001] bits: x11
+	return c64.RAM[1]&0b11 == 0b11 // [$0001] bits: x11
 }
 
 // Whether Character generator ROM is switched on or not
 func (c64 *C64) isChargenOn() bool {
-	return c64.RAM[1]&7 >= 1 && c64.RAM[1]&7 <= 3 // [$0001] bits: 0xx but not 000
+	return (c64.RAM[1]&0b100 == 0) && (c64.RAM[1]&0b11 != 0) // [$0001] bits: 0xx but not 000
 }
 
 // Whether IO register bank is switched on or not
 func (c64 *C64) isIOon() bool {
-	return c64.RAM[1]&7 >= 5 && c64.RAM[1]&7 <= 7// [$0001] bits: 1xx but not 100
+	return (c64.RAM[1]&0b100 != 0) && (c64.RAM[1]&0b11 != 0) // [$0001] bits: 1xx but not 100
 }
 
 // Whether Kernal ROM is switched on or not
 func (c64 *C64) isKernalOn() bool {
-	return c64.RAM[1]&2 > 0 // [$0001] bits: x1x
+	return c64.RAM[1]&0b10 != 0 // [$0001] bits: x1x
 }
