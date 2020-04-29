@@ -4,16 +4,29 @@ import (
 	"go64/cpu6502"
 )
 
+const (
+	NTSC = iota
+	PAL
+	NTSC_cyclesPerSecond = 1022727
+	NTSC_cyclesPerFrame  = 16506
+	NTSC_scanlines       = 262
+	PAL_cyclesPerSecond  = 985248
+	PAL_cyclesPerFrame   = 19656
+	PAL_scanlines        = 312
+)
+
 // Commodore 64 virtual machine
 type C64 struct {
-	CPU cpu6502.CPU
-	RAM [0x10000]byte // Whole 64KB of RAM
-	IO  [0x1000]byte  // TODO for now just store the bytes raw
+	CPU  cpu6502.CPU
+	RAM  [0x10000]byte // Whole 64KB of RAM
+	IO   [0x1000]byte  // WIP for now just store the bytes raw
+	Type int           // NTSC or PAL
 }
 
 // Make creates and initializes a C64 instance.
-func Make() *C64 {
+func Make(c64type int) *C64 {
 	c64 := new(C64)
+	c64.Type = c64type // PAL | NTSC
 	c64.Init()
 	return c64
 }
@@ -39,7 +52,7 @@ func (c64 *C64) Jump(address uint16) {
 
 // Whether Basic ROM is switched on or not
 func (c64 *C64) isBasicOn() bool {
-	return c64.RAM[1]&0b11 == 0b11 // [$0001] bits: x11
+	return c64.RAM[1]&0b11 == 0b11
 }
 
 // Whether Character generator ROM is switched on or not
@@ -54,5 +67,5 @@ func (c64 *C64) isIOon() bool {
 
 // Whether Kernal ROM is switched on or not
 func (c64 *C64) isKernalOn() bool {
-	return c64.RAM[1]&0b10 != 0 // [$0001] bits: x1x
+	return c64.RAM[1]&0b10 != 0
 }
