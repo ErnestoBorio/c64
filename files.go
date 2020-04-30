@@ -12,13 +12,13 @@ import (
 	"strings"
 )
 
-type File struct {
+type c64File struct {
 	format string
 	err    error
-	data   []Filedata // Can be multiple if it's a T64 container
+	data   []filedata // Can be multiple if it's a T64 container
 }
 
-type Filedata struct {
+type filedata struct {
 	name    string
 	address uint16
 	size    int
@@ -28,7 +28,7 @@ type Filedata struct {
 // loads a file in the C64 RAM
 // TODO check the corner case where the load overwrites the IO area if switched on
 func (c64 *C64) LoadFile(file *os.File) uint16 {
-	cbmFile := ReadFile(file)
+	cbmFile := readFile(file)
 	address := cbmFile.data[0].address
 	ram := c64.RAM[address:]        // Get a slice of the RAM from the load address onward
 	copy(ram, cbmFile.data[0].data) // Load file in memory
@@ -37,7 +37,7 @@ func (c64 *C64) LoadFile(file *os.File) uint16 {
 }
 
 // Reads a formatted file and returns the raw file(s) content and load address(es)
-func ReadFile(file *os.File) File {
+func readFile(file *os.File) c64File {
 	var size int64
 	var filename string
 
@@ -56,7 +56,7 @@ func ReadFile(file *os.File) File {
 
 	_, err = file.Read(headerBuf)
 	if err != nil {
-		return File{
+		return c64File{
 			err: fmt.Errorf("Can't read file %s", filename)}
 	}
 	// Make header all uppercase to make case insensitive string comparison easier
@@ -76,15 +76,15 @@ func ReadFile(file *os.File) File {
 			buffer := make([]byte, size)
 			bytesRead, err := file.Read(buffer)
 			if err != nil {
-				return File{
+				return c64File{
 					err: fmt.Errorf("Couldn't allocate buffer of size %d bytes to read file %s.",
 						size, filename)}
 			}
 			machineCode, address := parseBasicLoader(buffer)
-			return File{
+			return c64File{
 				format: "PRG",
 				err:    nil,
-				data: []Filedata{Filedata{
+				data: []filedata{filedata{
 					name:    filename, // Since PRG format doesn't have a C64 filename, return host OS filename
 					address: address,
 					size:    bytesRead,
