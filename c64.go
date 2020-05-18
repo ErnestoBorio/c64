@@ -24,11 +24,11 @@ var Scanlines = [2]int{
 
 // Commodore 64 virtual machine
 type C64 struct {
-	CPU             cpu6502.CPU
-	RAM             [0x10000]byte // Whole 64KB of RAM
-	IO              [0x1000]byte  // WIP for now just store the bytes raw
-	Type            int           // NTSC or PAL
-	VIC             VIC
+	CPU  cpu6502.CPU
+	RAM  [0x10000]byte // Whole 64KB of RAM
+	IO   [0x1000]byte  // WIP for now just store the bytes raw
+	Type int           // NTSC or PAL
+	VIC  VIC
 }
 
 // Make creates and initializes a C64 instance.
@@ -52,10 +52,42 @@ func (c64 *C64) Init() {
 	// Initial RAM state
 	c64.RAM[0] = 0b00101111 // cpu port direction
 	c64.RAM[1] = 0b00110111 // cpu port (bank switch) Basic, IO & Kernel switched on
-	c64.RAM[0x0800] = 0     // Unused (Must contain a value of 0 so that the BASIC program can be RUN)
+	c64.RAM[0x2B] = 0x01 // Start address of BASIC program
+	c64.RAM[0x2C] = 0x80
+	c64.RAM[0x37] =    0 // Pointer to end of BASIC area
+	c64.RAM[0x38] = 0xA0
+	c64.RAM[0x800] =   0 // Unused (Must contain a value of 0 so that the BASIC program can be RUN)
 
 	// IO Registers, 0xD000 .. 0xDFFF
-	c64.writeIO(0xD011, 0b00011011) // Screen control register #1
+	c64.WriteIO(0xD011, 0b00011011) // Screen control register #1
+
+	// $002B-$002C
+	// Pointer to beginning of BASIC area.
+	// Default: $0801
+
+	// $002D-$002E
+	// 45-46	
+	// Pointer to beginning of variable area. (End of program plus 1.)
+
+	// $002F-$0030
+	// 47-48	
+	// Pointer to beginning of array variable area.
+
+	// $0031-$0032
+	// 49-50	
+	// Pointer to end of array variable area.
+
+	// $0033-$0034
+	// 51-52	
+	// Pointer to beginning of string variable area. (Grows downwards from end of BASIC area.)
+
+	// $0035-$0036
+	// 53-54	
+	// Pointer to memory allocated for current string variable.
+
+	// $0037-$0038
+	// Pointer to end of BASIC area.
+	// Default: $A000
 }
 
 // Makes C64 set given address to execute next
@@ -93,7 +125,7 @@ func (c64 *C64) Run() {
 		// According to http://www.zimmers.net/cbmpics/cbm/c64/vic-ii.txt #3.5
 		var badLine bool = false
 		if c64.VIC.Scanline >= 48 && c64.VIC.Scanline <= 247 &&
-			(c64.VIC.Scanline & 0b111 == c64.VIC.VerticalScroll) && c64.VIC.DisplayEnabled {
+			(byte(c64.VIC.Scanline & 0b111) == c64.VIC.VerticalScroll()) && c64.VIC.DisplayEnabled() {
 				badLine = true
 		}
 		
@@ -114,4 +146,9 @@ func (c64 *C64) Run() {
 			}
 		}
 	}
+}
+
+// Reads a 16 bit int from 2 bytes little endian wise
+func getUint16(from []byte) uint16 {
+	return (uint16(from[1]) << 8) | uint16(from[0])
 }

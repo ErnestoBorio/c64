@@ -16,7 +16,7 @@ func (c64 *C64) readMemory(address uint16) byte {
 
 	case address <= 0xDFFF: // IO / Chargen
 		if c64.isIOon() {
-			return c64.readIO(address)
+			return c64.ReadIO(address)
 		}
 		if c64.isChargenOn() {
 			return c64.readChargen(address)
@@ -31,9 +31,14 @@ func (c64 *C64) readMemory(address uint16) byte {
 	}
 }
 
+// Reads a 16 bit int from 2 bytes little endian wise, from the C64 memory
+func (c64 *C64) ReadMemoryUint16(address uint16) uint16 {
+	return (uint16(c64.readMemory(address+1)) << 8) | uint16(c64.readMemory(address))
+}
+
 func (c64 *C64) writeMemory(address uint16, value byte) {
 	if address >= 0xD000 && address <= 0xDFFF && c64.isIOon() {
-		c64.writeIO(address, value)
+		c64.WriteIO(address, value)
 	} else {
 		c64.writeRAM(address, value)
 	}
