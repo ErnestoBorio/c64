@@ -53,41 +53,13 @@ func (c64 *C64) Init() {
 	c64.RAM[0] = 0b00101111 // cpu port direction
 	c64.RAM[1] = 0b00110111 // cpu port (bank switch) Basic, IO & Kernel switched on
 	c64.RAM[0x2B] = 0x01 // Start address of BASIC program
-	c64.RAM[0x2C] = 0x80
+	c64.RAM[0x2C] = 0x08
 	c64.RAM[0x37] =    0 // Pointer to end of BASIC area
 	c64.RAM[0x38] = 0xA0
 	c64.RAM[0x800] =   0 // Unused (Must contain a value of 0 so that the BASIC program can be RUN)
 
 	// IO Registers, 0xD000 .. 0xDFFF
-	c64.WriteIO(0xD011, 0b00011011) // Screen control register #1
-
-	// $002B-$002C
-	// Pointer to beginning of BASIC area.
-	// Default: $0801
-
-	// $002D-$002E
-	// 45-46	
-	// Pointer to beginning of variable area. (End of program plus 1.)
-
-	// $002F-$0030
-	// 47-48	
-	// Pointer to beginning of array variable area.
-
-	// $0031-$0032
-	// 49-50	
-	// Pointer to end of array variable area.
-
-	// $0033-$0034
-	// 51-52	
-	// Pointer to beginning of string variable area. (Grows downwards from end of BASIC area.)
-
-	// $0035-$0036
-	// 53-54	
-	// Pointer to memory allocated for current string variable.
-
-	// $0037-$0038
-	// Pointer to end of BASIC area.
-	// Default: $A000
+	c64.IO[0x11] = 0b00011011 // Screen control register #1
 }
 
 // Makes C64 set given address to execute next
@@ -146,9 +118,4 @@ func (c64 *C64) Run() {
 			}
 		}
 	}
-}
-
-// Reads a 16 bit int from 2 bytes little endian wise
-func getUint16(from []byte) uint16 {
-	return (uint16(from[1]) << 8) | uint16(from[0])
 }
