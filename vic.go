@@ -15,13 +15,17 @@ type VIC struct {
 	// Pointers to the C64 memory:
 	RAM             *[0x10000]byte
 	IO              *[0x1000] byte
-	Scanline        int // Current rendering scanline
+	scanline        int // Current rendering scanline
+	BadLine         bool // Whether the current scanline is a bad line
 	Cycles2scanline int // How many cycles are left to reach the beginning of next scanline
+	rasterIRQline   int // Next scanline at which fire an IRQ
 }
 
 func (vic *VIC) Init(c64 *C64) {
 	vic.RAM = &c64.RAM
 	vic.IO  = &c64.IO
+	vic.BadLine = false
+	vic.rasterIRQline = 0
 }
 
 // $D011 bit 0..2: Vertical scroll in pixels
@@ -64,14 +68,21 @@ func (vic *VIC) ExtendedBackGround() bool {
 	return true
 }
 
-// $D012 lower 8 bits of the scanline number where to fire IRQ
-// $D011 bit 7: Bit 8 of previous number
-func (vic *VIC) RasterIRQpointer() int {
-	return int((vic.IO[0x11] & 0b10000000) << 1) | int(vic.IO[0x12])
+// Keep memory in sync with the new scanline number
+func (vic *VIC) setScanline(newScanline int) {
+	vic.scanline = newScanline
+	vic.IO[0x12] = byte(newScanline) // Get lower 8 bits
+	vic.IO[0x11] &= 0b01111111 // Clear bit 7
+	vic.IO[0x11] |= (byte(newScanline & 0b100000000) >>1) // Get scanline bit 8 and push it as bit 7 in $D011
 }
 
-func (vic *VIC) SetScanline(scanline int) {
-	vic.IO[0x12] = byte(scanline) // get lower 8 bits
-	vic.IO[0x11] &= 0b01111111 // clear bit 7
-	vic.IO[0x11] |= byte(scanline & 0b10000000)
+func (vic *VIC) Scanline() int {
+	return vic.scanline
+}
+
+func (vic *VIC) setRasterIRQline(line int) {
+}
+
+func (vic *VIC) getRasterIRQline() int {
+	return vic.rasterIRQline
 }

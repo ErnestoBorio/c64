@@ -45,7 +45,7 @@ func (c64 *C64) Init() {
 	c64.CPU.Init(c64.readMemory, c64.writeMemory)
 	c64.VIC.Init(c64)
 
-	c64.VIC.Scanline = c64.getMaxScanlines() -1 // Start in the last scanline
+	c64.VIC.setScanline(0)
 	c64.VIC.Cycles2scanline = CyclesPerScanline
 
 	// Init memory. Mirrored memory has to be set by appropriate function calls. Non mirrored memory can be set directly
