@@ -91,31 +91,28 @@ func (c64 *C64) getMaxScanlines() int {
 	return Scanlines[c64.Type]
 }
 
-// Goroutine that Runs the C64 continuously until paused.
-func (c64 *C64) Run() {
-	for {
-		// According to http://www.zimmers.net/cbmpics/cbm/c64/vic-ii.txt #3.5
-		var badLine bool = false
-		if c64.VIC.Scanline >= 48 && c64.VIC.Scanline <= 247 &&
-			(byte(c64.VIC.Scanline & 0b111) == c64.VIC.VerticalScroll()) && c64.VIC.DisplayEnabled() {
-				badLine = true
-		}
+// Advance one step, I.E. execute one instruction
+func (c64 *C64) Step() {
+	// According to http://www.zimmers.net/cbmpics/cbm/c64/vic-ii.txt #3.5
+	if c64.VIC.scanline >= 48 && c64.VIC.scanline <= 247 &&
+		(byte(c64.VIC.scanline & 0b111) == c64.VIC.VerticalScroll()) && c64.VIC.DisplayEnabled() {
+			c64.VIC.BadLine = true
+	}
+	
+	c64.VIC.Cycles2scanline -= c64.CPU.Step()
+
+	if c64.VIC.BadLine && c64.VIC.Cycles2scanline <= 40 {
+		// Steal the CPU 40 cycles from the end of the scanline (WIP is this right?)
+		c64.VIC.Cycles2scanline -= 40
+	}
+	// WIP: sprites in this scanline also steal CPU cycles, see vic-ii.txt
+
+	if c64.VIC.Cycles2scanline <= 0 {
+		c64.VIC.Cycles2scanline += CyclesPerScanline
+		c64.VIC.setScanline(c64.VIC.scanline+1)
 		
-		c64.VIC.Cycles2scanline -= c64.CPU.Step()
-
-		if badLine && c64.VIC.Cycles2scanline <= 40 {
-			// Steal the CPU 40 cycles from the end of the scanline (WIP is this right?)
-			c64.VIC.Cycles2scanline -= 40
-		}
-		// WIP: sprites in this scanline also steal CPU cycles, see vic-ii.txt
-
-		if c64.VIC.Cycles2scanline <= 0 {
-			c64.VIC.Cycles2scanline += CyclesPerScanline
-			c64.VIC.Scanline++
-			
-			if c64.VIC.Scanline >= c64.getMaxScanlines() {
-				c64.VIC.Scanline = 0
-			}
+		if c64.VIC.scanline >= c64.getMaxScanlines() {
+			c64.VIC.setScanline(0)
 		}
 	}
 }
