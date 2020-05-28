@@ -67,5 +67,10 @@ func (c64 *C64) setScanline(newScanline int) {
 		c64.BadLine = false
 	}
 
-func (vic *VIC) setRasterIRQline(line int) {
+	// Alert appropriate raster mods that a new scanline is born
+	for _, mod := range c64.Mods.raster {
+		if mod.line == c64.scanline {
+			(*mod.handler)(c64.scanline)
+		}
+	}
 }
