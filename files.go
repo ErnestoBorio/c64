@@ -16,7 +16,7 @@ func getUint16(from []byte) uint16 {
 // Returns the address where it was loaded so it can be JMP'ed to.
 // If load address is 0x801, it's assumed to be a BASIC program and thus a SYS command is searched for and its address
 // is returned instead. (WIP: this is temporary to avoid running the BASIC program)
-// WIP Not tested
+// WIP Not tested (manual test passed)
 func (c64 *C64) LoadPRG(file *os.File) (uint16, error) {
 	finfo, err := file.Stat()
 	if err != nil {
@@ -49,6 +49,7 @@ func (c64 *C64) LoadPRG(file *os.File) (uint16, error) {
 
 	ptr := c64.RAM[address+4:]
 	// Else scan BASIC program for SYS command to get address of the start of the machine code program
+	// WIP For now we just assume a loader that does a SYS in the first line
 	if ptr[0] != 0x9E { // $9E token is Basic SYS command
 		return 0, errors.New("Unrecognized BASIC loader")
 	}

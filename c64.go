@@ -1,13 +1,12 @@
 package c64
 
 import (
-	"go64/cpu6502"
+	"github.com/ErnestoBorio/cpu6502"
 )
 
 const (
 	NTSC = 0
 	PAL  = 1
-
 	CyclesPerScanline    = 63
 	NTSC_cyclesPerSecond = 1022727
 	NTSC_cyclesPerFrame  = 16506
@@ -18,8 +17,8 @@ const (
 )
 
 var Scanlines = [2]int{
-	/* [NTSC=0] */ NTSC_scanlines,
-	/* [PAL=1]  */ PAL_scanlines,
+	NTSC_scanlines, // [NTSC=0] = 262
+	PAL_scanlines,  // [PAL=1]  = 312
 }
 
 // Commodore 64 virtual machine
