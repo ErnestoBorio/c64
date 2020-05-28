@@ -28,7 +28,6 @@ type C64 struct {
 	IO   [0x1000]byte  // WIP for now just store the bytes raw
 	Type int           // NTSC or PAL
 	VIC  VIC
-	Mods Mods
 }
 
 // Make creates and initializes a C64 instance.
