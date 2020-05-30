@@ -28,13 +28,16 @@ type C64 struct {
 	IO   [0x1000]byte  // WIP for now just store the bytes raw
 	Type int           // NTSC or PAL
 	
-	// VIC
-	scanline        int  // Current rendering scanline
-	BadLine         bool // Whether the current scanline is a bad line
-	Cycles2scanline int  // How many cycles are left to reach the beginning of next scanline
-	rasterIRQline   int  // Next scanline at which fire an IRQ
+	VIC struct {
+		scanline        int  // Current rendering scanline
+		BadLine         bool // Whether the current scanline is a bad line
+		Cycles2scanline int  // How many cycles are left to reach the beginning of next scanline
+		rasterIRQline   int  // Next scanline at which fire an IRQ
+	}
 
-	Mods Mods
+	Mods struct {
+		raster []struct{line int; handler *func(int)}
+	}
 }
 
 // Make creates and initializes a C64 instance.
@@ -50,10 +53,10 @@ func (c64 *C64) Init() {
 	c64.CPU = cpu6502.CPU{}
 	c64.CPU.Init(c64.readMemory, c64.writeMemory)
 	
-	c64.BadLine = false
-	c64.rasterIRQline = 0
+	c64.VIC.BadLine = false
+	c64.VIC.rasterIRQline = 0
 	c64.setScanline(0)
-	c64.Cycles2scanline = CyclesPerScanline
+	c64.VIC.Cycles2scanline = CyclesPerScanline
 
 	// Init memory. Mirrored memory has to be set by appropriate function calls. Non mirrored memory can be set directly
 	// Initial RAM state
@@ -100,21 +103,21 @@ func (c64 *C64) getMaxScanlines() int {
 
 // Advance one step, I.E. execute one instruction
 func (c64 *C64) Step() {
-	c64.Cycles2scanline -= c64.CPU.Step()
+	c64.VIC.Cycles2scanline -= c64.CPU.Step()
 
-	if c64.BadLine && c64.Cycles2scanline <= 40 {
+	if c64.VIC.BadLine && c64.VIC.Cycles2scanline <= 40 {
 		// Steal the CPU 40 cycles from the end of the scanline (WIP is this right?)
-		c64.Cycles2scanline -= 40
+		c64.VIC.Cycles2scanline -= 40
 	}
 	// WIP: sprites in this scanline also steal CPU cycles, see vic-ii.txt
 
-	if c64.Cycles2scanline <= 0 {
-		c64.Cycles2scanline += CyclesPerScanline
+	if c64.VIC.Cycles2scanline <= 0 {
+		c64.VIC.Cycles2scanline += CyclesPerScanline
 				
-		if c64.scanline >= c64.getMaxScanlines() {
+		if c64.VIC.scanline >= c64.getMaxScanlines() {
 			c64.setScanline(0)
 		} else {
-			c64.setScanline(c64.scanline+1)
+			c64.setScanline(c64.VIC.scanline+1)
 		}
 	}
 }

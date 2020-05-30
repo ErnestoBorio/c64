@@ -1,10 +1,6 @@
 package c64
 
 // WIP not tested
-/*
-	The VIC struct is not meant to be an independent entity, but rather a namespace of sorts to keep VIC-II related
-	attributes and methods and not pollute C64
-*/
 
 const (
 	Character = iota
@@ -34,7 +30,6 @@ func (c64 *C64) DisplayEnabled() bool {
 	return false
 }
 
-
 // $D011 bit 5 // Character | Bitmap
 func (c64 *C64) GraphicMode() int {
 	if c64.IO[0x11] & 0b100000 == 0 {
@@ -53,24 +48,24 @@ func (c64 *C64) ExtendedBackGround() bool {
 
 // Keep memory in sync with the new scanline number
 func (c64 *C64) setScanline(newScanline int) {
-	c64.scanline = newScanline
+	c64.VIC.scanline = newScanline
 	c64.IO[0x12] = byte(newScanline) // Get lower 8 bits
 	c64.IO[0x11] &= 0b01111111 // Clear bit 7
 	c64.IO[0x11] |= (byte(newScanline & 0b100000000) >>1) // Get scanline bit 8 and push it as bit 7 in $D011
 
 	// According to http://www.zimmers.net/cbmpics/cbm/c64/vic-ii.txt #3.5
-	if c64.scanline >= 48 && c64.scanline <= 247 &&
-		(byte(c64.scanline & 0b111) == c64.VerticalScroll()) &&
+	if c64.VIC.scanline >= 48 && c64.VIC.scanline <= 247 &&
+		(byte(c64.VIC.scanline & 0b111) == c64.VerticalScroll()) &&
 			c64.DisplayEnabled() {
-				c64.BadLine = true
+				c64.VIC.BadLine = true
 	} else {
-		c64.BadLine = false
+		c64.VIC.BadLine = false
 	}
 
 	// Alert appropriate raster mods that a new scanline is born
 	for _, mod := range c64.Mods.raster {
-		if mod.line == c64.scanline {
-			(*mod.handler)(c64.scanline)
+		if mod.line == c64.VIC.scanline {
+			(*mod.handler)(c64.VIC.scanline)
 		}
 	}
 }
