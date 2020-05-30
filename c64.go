@@ -61,9 +61,9 @@ func (c64 *C64) Init() {
 	c64.RAM[1] = 0b00110111 // cpu port (bank switch) Basic, IO & Kernel switched on
 	c64.RAM[0x2B] = 0x01 // Start address of BASIC program
 	c64.RAM[0x2C] = 0x08
-	c64.RAM[0x37] =    0 // Pointer to end of BASIC area
+	c64.RAM[0x37] = 0    // Pointer to end of BASIC area
 	c64.RAM[0x38] = 0xA0
-	c64.RAM[0x800] =   0 // Unused (Must contain a value of 0 so that the BASIC program can be RUN)
+	c64.RAM[0x800] = 0   // Unused (Must contain a value of 0 so that the BASIC program can be RUN)
 
 	// IO Registers, 0xD000 .. 0xDFFF
 	c64.IO[0x11] = 0b00011011 // Screen control register #1
