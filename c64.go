@@ -101,23 +101,24 @@ func (c64 *C64) getMaxScanlines() int {
 	return Scanlines[c64.Type]
 }
 
-// Advance one step, I.E. execute one instruction
-func (c64 *C64) Step() {
-	c64.VIC.Cycles2scanline -= c64.CPU.Step()
+func (c64 *C64) Run() {
+	for {
+		c64.VIC.Cycles2scanline -= c64.CPU.Step()
 
-	if c64.VIC.BadLine && c64.VIC.Cycles2scanline <= 40 {
-		// Steal the CPU 40 cycles from the end of the scanline (WIP is this right?)
-		c64.VIC.Cycles2scanline -= 40
-	}
-	// WIP: sprites in this scanline also steal CPU cycles, see vic-ii.txt
+		if c64.VIC.BadLine && c64.VIC.Cycles2scanline <= 40 {
+			// Steal the CPU 40 cycles from the end of the scanline (WIP is this right?)
+			c64.VIC.Cycles2scanline -= 40
+		}
+		// WIP: sprites in this scanline also steal CPU cycles, see vic-ii.txt
 
-	if c64.VIC.Cycles2scanline <= 0 {
-		c64.VIC.Cycles2scanline += CyclesPerScanline
-				
-		if c64.VIC.scanline >= c64.getMaxScanlines() {
-			c64.setScanline(0)
-		} else {
-			c64.setScanline(c64.VIC.scanline+1)
+		if c64.VIC.Cycles2scanline <= 0 {
+			c64.VIC.Cycles2scanline += CyclesPerScanline
+					
+			if c64.VIC.scanline >= c64.getMaxScanlines() {
+				c64.setScanline(0)
+			} else {
+				c64.setScanline(c64.VIC.scanline+1)
+			}
 		}
 	}
 }
