@@ -109,7 +109,7 @@ func (c64 *C64) Run() {
 			// Steal the CPU 40 cycles from the end of the scanline (WIP is this right?)
 			c64.VIC.Cycles2scanline -= 40
 		}
-		// WIP: sprites in this scanline also steal CPU cycles, see vic-ii.txt
+		// WIP: sprites in this scanline also steal CPU cycles, see vic-ii.txt (2 cycles per sprite)
 
 		if c64.VIC.Cycles2scanline <= 0 {
 			c64.VIC.Cycles2scanline += CyclesPerScanline
