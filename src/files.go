@@ -35,14 +35,14 @@ func (c64 *C64) LoadPRG(file *os.File) (uint16, error) {
 	// would produce undefined behavior. (WIP maybe some hack uses this?)
 	if c64.isIOon() &&
 		((address >= 0xD000 && address <= 0xDFFF) ||
-			(address < 0xD000 && address + prgSize > 0xD000)) {
+			(address < 0xD000 && address+prgSize > 0xD000)) {
 		return 0, errors.New("loading file would overflow into IO area")
 	}
 	// Read the PRG file minus its header into RAM
-	file.ReadAt(c64.RAM[address : address + prgSize], 2)
+	file.ReadAt(c64.RAM[address:address+prgSize], 2)
 
 	// If load address is not BASIC program area, file is assumed to be pure machine code, just JMP to address
-	basicArea := c64.ReadUint16(0x2B) // Pointer to start of BASIC area, default is $801
+	basicArea := c64.ReadUint16le(0x2B) // Pointer to start of BASIC area, default is $801
 	if address != basicArea {
 		return address, nil
 	}
@@ -60,6 +60,7 @@ func (c64 *C64) LoadPRG(file *os.File) (uint16, error) {
 		if ptr[0] >= '0' && ptr[0] <= '9' {
 			strAddress += string(ptr[0])
 		}
+		// (, ) and other chars are ignored
 	}
 	jmpTo, _ := strconv.Atoi(strAddress)
 	return uint16(jmpTo), nil

@@ -3,6 +3,7 @@ package c64
 import (
 	"crypto/sha512"
 	"encoding/hex"
+	"os"
 	"testing"
 )
 
@@ -29,4 +30,20 @@ func TestRoms(t *testing.T) {
 	if chargenSha512 != hex.EncodeToString(chargenHash[:]) {
 		t.Errorf("Chargen ROM hash failed (`roms/chargen`)")
 	}
+}
+
+func TestRunC64(t *testing.T) {
+	c64 := Make(NTSC)
+	c64.Init()
+
+	currentPath, err := os.Getwd()
+	filePath := currentPath + "/../files/Montezuma's Revenge (1984)(Parker Brothers).prg"
+	file, err := os.Open(filePath)
+	if err != nil {
+		t.Errorf("error reading file: " + filePath)
+	}
+	jumpTo, err := c64.LoadPRG(file)
+	c64.Jump(jumpTo)
+
+	c64.Run()
 }

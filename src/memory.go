@@ -32,14 +32,14 @@ func (c64 *C64) readMemory(address uint16) byte {
 }
 
 // Reads a 16 bit int from 2 bytes little endian wise, from the C64 memory
-func (c64 *C64) ReadUint16(address uint16) uint16 {
+func (c64 *C64) ReadUint16le(address uint16) uint16 {
 	return (uint16(c64.readMemory(address+1)) << 8) | uint16(c64.readMemory(address))
 }
 
 // Writes a 16 bit into memory little endian wise. Writing to $FFFF wraps around to 0.
-func (c64 *C64) WriteUint16(address uint16, value uint16) {
+func (c64 *C64) WriteUint16le(address uint16, value uint16) {
 	c64.writeMemory(address, byte(value))
-	c64.writeMemory(address+1, byte((value & 0xFF00) >>8))
+	c64.writeMemory(address+1, byte((value&0xFF00)>>8))
 }
 
 func (c64 *C64) writeMemory(address uint16, value byte) {
@@ -70,7 +70,7 @@ func (c64 *C64) readBasic(address uint16) byte {
 	return ROMBasic[address&0x1FFF]
 }
 
-// Read character generator ROM
+// Reads from character generator ROM
 func (c64 *C64) readChargen(address uint16) byte {
 	return ROMChargen[address&0xFFF]
 }

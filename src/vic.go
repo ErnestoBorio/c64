@@ -22,7 +22,7 @@ func (c64 *C64) VerticalScroll() byte {
 
 // $D011 bit 3: 24 | 25
 func (c64 *C64) ScreenCharHeight() byte {
-	if c64.IO[0x11] & 0b1000 == 0 {
+	if c64.IO[0x11]&0b1000 == 0 {
 		return 24
 	}
 	return 25
@@ -32,12 +32,12 @@ func (c64 *C64) ScreenCharHeight() byte {
 // 0 = Screen off, complete screen is covered by border
 // 1 = Screen on, normal screen contents are visible
 func (c64 *C64) DisplayEnabled() bool {
-	return c64.IO[0x11] & 0b10000 != 0
+	return c64.IO[0x11]&0b10000 != 0
 }
 
 // $D011 bit 5 // Character | Bitmap
 func (c64 *C64) GraphicMode() int {
-	if c64.IO[0x11] & 0b100000 == 0 {
+	if c64.IO[0x11]&0b100000 == 0 {
 		return Character
 	}
 	return Bitmap
@@ -45,7 +45,7 @@ func (c64 *C64) GraphicMode() int {
 
 // $D011 bit 6: Extended background mode
 func (c64 *C64) ExtendedBackGround() bool {
-	return c64.IO[0x11] &0b1000000 != 0
+	return c64.IO[0x11]&0b1000000 != 0
 }
 
 // Keep memory in sync with the new scanline number
@@ -57,8 +57,8 @@ func (c64 *C64) setScanline(newScanline int) {
 
 	// According to http://www.zimmers.net/cbmpics/cbm/c64/vic-ii.txt #3.5
 	if c64.Vic.scanline >= 48 && c64.Vic.scanline <= 247 &&
-		(byte(c64.Vic.scanline & 0b111) == c64.VerticalScroll()) && c64.DisplayEnabled() {
-			c64.Vic.BadLine = true
+		(byte(c64.Vic.scanline&0b111) == c64.VerticalScroll()) && c64.DisplayEnabled() {
+		c64.Vic.BadLine = true
 	} else {
 		c64.Vic.BadLine = false
 	}
@@ -66,4 +66,9 @@ func (c64 *C64) setScanline(newScanline int) {
 
 func (vic *VIC) setBank(bank byte) {
 	vic.bank = bank
+}
+
+func (c64 *C64) VICInit() {
+	c64.Vic.scanline = 0
+	c64.IO[0x11] = 0b00011011 // vertical scroll = 3, height = 25 rows, screen on, text mode, extended bg off
 }
