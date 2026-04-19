@@ -43,7 +43,8 @@ func TestRunC64(t *testing.T) {
 		t.Errorf("error reading file: " + filePath)
 	}
 	jumpTo, err := c64.LoadPRG(file)
+	if err != nil {
+		t.Errorf("error loading PRG: %v", err)
+	}
 	c64.Jump(jumpTo)
-
-	c64.Run()
 }

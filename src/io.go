@@ -17,10 +17,8 @@ package c64
 // Read I/O ports
 // address is assumed to be $D000..$DFFF
 func (c64 *C64) ReadIO(address uint16) byte {
-	// WIP test pending
-	if address <= 0xD3FF {
-		// VIC video registers
-		address &= 0x3F // de-mirror address, registers $D000..$D03F are repeated up to $D3FF
+	if address <= 0xD3FF { // VIC video registers
+		address &= 0x3F // $D040..$D3FF are mirrors of $D000..$D03F
 		if address >= 0x2F {
 			return 0xFF //  $D02F..$D03F Unused bytes, always read as $FF
 		} else if address >= 0x20 {
@@ -30,7 +28,6 @@ func (c64 *C64) ReadIO(address uint16) byte {
 		return c64.IO[address]
 	} else {
 		// Generic IO read WIP
-		// Transpose address into space $0..$FFF of IO bank
 		return c64.IO[address&0xFFF]
 	}
 }
@@ -39,8 +36,7 @@ func (c64 *C64) ReadIO(address uint16) byte {
 // address is assumed to be $D000..$DFFF
 func (c64 *C64) WriteIO(address uint16, value byte) {
 	if address <= 0xD3FF { // VIC video registers
-		// WIP test pending
-		address &= 0x3F     // de-mirror address, registers $D000..$D03F are repeated up to $D3FF
+		address &= 0x3F     // $D040..$D3FF are mirrors of $D000..$D03F
 		if address < 0x20 { // Various VIC registers
 			c64.IO[address] = value
 		} else if address < 0x2F { // 4-bit color registers
@@ -48,7 +44,6 @@ func (c64 *C64) WriteIO(address uint16, value byte) {
 		}
 		// else unused bytes in $D02F..$D03F,  ignore the write.
 	} else { // Generic IO write WIP
-		// Transpose address into space $0..$FFF of IO bank
 		c64.IO[address&0xFFF] = value
 		// if address == 0xDD00 {
 		// 	c64.Vic.setBank(^(value & 0b11)) // Bitwise not of bits 0 & 1 turns 0,1,2,3 into 3,2,1,0

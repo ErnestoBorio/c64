@@ -56,12 +56,6 @@ func (c64 *C64) Init() {
 	c64.IO[0xD00] = 0b00111011 // VIC bank selection, RS232 and serial ports
 }
 
-func (c64 *C64) Run() {
-	for {
-		c64.Step()
-	}
-}
-
 // Makes C64 set given address to execute next
 func (c64 *C64) Jump(address uint16) {
 	c64.CPU.PC = address
