@@ -47,9 +47,9 @@ func (c64 *C64) Init() {
 	c64.RAM[0x2C] = 0x08
 	c64.RAM[0x37] = 0 // Pointer to end of BASIC area
 	c64.RAM[0x38] = 0xA0
-	c64.RAM[0x800] = 0 // Unused (Must contain a value of 0 so that the BASIC program can be RUN)
-	c64.RAM[0xFFFC] = 0xE2  // Reset vector low byte
-	c64.RAM[0xFFFD] = 0xFC  // Reset vector high byte ($FCE2)
+	c64.RAM[0x800] = 0     // Unused (Must contain a value of 0 so that the BASIC program can be RUN)
+	c64.RAM[0xFFFC] = 0xE2 // Reset vector low byte
+	c64.RAM[0xFFFD] = 0xFC // Reset vector high byte ($FCE2)
 
 	// IO Registers, 0xD000 .. 0xDFFF
 	c64.IO[0x11] = 0b00011011  // Screen control register #1
@@ -81,7 +81,23 @@ func (c64 *C64) isKernalOn() bool {
 	return c64.RAM[1]&0b10 != 0
 }
 
+// Step advances the whole C64 by one CPU instruction and returns the number of
+// CPU cycles consumed. Other machine components should be advanced here from
+// the returned cycle count as timing support is implemented.
 func (c64 *C64) Step() int {
 	cyclesAdvanced := c64.CPU.Step()
+	// VIC, CIA, IRQ, and other machine timing will be advanced here.
+	return cyclesAdvanced
+}
+
+// RunCycles advances the C64 until at least the requested number of CPU cycles
+// have elapsed. The returned value is the actual number of cycles consumed,
+// which may be greater than requested because execution only stops between
+// instructions.
+func (c64 *C64) RunCycles(cycles int) int {
+	cyclesAdvanced := 0
+	for cyclesAdvanced < cycles {
+		cyclesAdvanced += c64.Step()
+	}
 	return cyclesAdvanced
 }

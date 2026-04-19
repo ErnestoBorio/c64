@@ -48,3 +48,104 @@ func TestRunC64(t *testing.T) {
 	}
 	c64.Jump(jumpTo)
 }
+
+func loadTestProgram(c64 *C64, address uint16, program []byte) {
+	copy(c64.RAM[address:], program)
+	c64.Jump(address)
+}
+
+func TestRunCyclesZeroDoesNothing(t *testing.T) {
+	c64 := Make(NTSC)
+	c64.Init()
+	loadTestProgram(c64, 0x0800, []byte{0xEA}) // NOP
+
+	startPC := c64.CPU.PC
+	ran := c64.RunCycles(0)
+
+	if ran != 0 {
+		t.Fatalf("RunCycles(0) consumed %d cycles, want 0", ran)
+	}
+	if c64.CPU.PC != startPC {
+		t.Fatalf("RunCycles(0) advanced PC to $%04X, want $%04X", c64.CPU.PC, startPC)
+	}
+}
+
+func TestRunCyclesStopsAtInstructionBoundaries(t *testing.T) {
+	c64 := Make(NTSC)
+	c64.Init()
+	loadTestProgram(c64, 0x0800, []byte{
+		0xEA,             // NOP      2 cycles
+		0xEA,             // NOP      2 cycles
+		0x4C, 0x00, 0x08, // JMP $0800 3 cycles
+	})
+
+	ran := c64.RunCycles(1)
+	if ran != 2 {
+		t.Fatalf("first RunCycles consumed %d cycles, want 2", ran)
+	}
+	if c64.CPU.PC != 0x0801 {
+		t.Fatalf("first RunCycles left PC at $%04X, want $0801", c64.CPU.PC)
+	}
+
+	ran = c64.RunCycles(2)
+	if ran != 2 {
+		t.Fatalf("second RunCycles consumed %d cycles, want 2", ran)
+	}
+	if c64.CPU.PC != 0x0802 {
+		t.Fatalf("second RunCycles left PC at $%04X, want $0802", c64.CPU.PC)
+	}
+
+	ran = c64.RunCycles(3)
+	if ran != 3 {
+		t.Fatalf("third RunCycles consumed %d cycles, want 3", ran)
+	}
+	if c64.CPU.PC != 0x0800 {
+		t.Fatalf("third RunCycles left PC at $%04X, want $0800", c64.CPU.PC)
+	}
+}
+
+func TestRunCyclesOvershootsTargetWhenNeeded(t *testing.T) {
+	c64 := Make(NTSC)
+	c64.Init()
+	loadTestProgram(c64, 0x0800, []byte{
+		0xEA,             // NOP      2 cycles
+		0xEA,             // NOP      2 cycles
+		0x4C, 0x00, 0x08, // JMP $0800 3 cycles
+	})
+
+	ran := c64.RunCycles(3)
+	if ran != 4 {
+		t.Fatalf("RunCycles(3) consumed %d cycles, want 4 due to instruction-boundary overshoot", ran)
+	}
+	if c64.CPU.PC != 0x0802 {
+		t.Fatalf("RunCycles(3) left PC at $%04X, want $0802", c64.CPU.PC)
+	}
+}
+
+func TestStepAndRunCyclesAgree(t *testing.T) {
+	stepC64 := Make(NTSC)
+	stepC64.Init()
+	loadTestProgram(stepC64, 0x0800, []byte{
+		0xEA,             // NOP
+		0xEA,             // NOP
+		0x4C, 0x00, 0x08, // JMP $0800
+	})
+
+	runC64 := Make(NTSC)
+	runC64.Init()
+	loadTestProgram(runC64, 0x0800, []byte{
+		0xEA,
+		0xEA,
+		0x4C, 0x00, 0x08,
+	})
+
+	stepCycles := stepC64.Step() + stepC64.Step() + stepC64.Step()
+	runCycles := runC64.RunCycles(stepCycles)
+
+	if runCycles != stepCycles {
+		t.Fatalf("RunCycles consumed %d cycles, want %d", runCycles, stepCycles)
+	}
+	if runC64.CPU.PC != stepC64.CPU.PC {
+		t.Fatalf("RunCycles left PC at $%04X, want $%04X", runC64.CPU.PC, stepC64.CPU.PC)
+	}
+}

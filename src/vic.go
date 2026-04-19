@@ -8,11 +8,6 @@ const (
 )
 
 type VIC struct {
-	scanline        int  // Current rendering scanline
-	BadLine         bool // Whether the current scanline is a bad line
-	Cycles2scanline int  // How many cycles are left to reach the beginning of next scanline
-	rasterIRQline   int  // Next scanline at which to fire an IRQ
-	bank            byte
 }
 
 // $D011 bit 0..2: Vertical scroll in pixels
@@ -46,29 +41,4 @@ func (c64 *C64) GraphicMode() int {
 // $D011 bit 6: Extended background mode
 func (c64 *C64) ExtendedBackGround() bool {
 	return c64.IO[0x11]&0b1000000 != 0
-}
-
-// Keep memory in sync with the new scanline number
-func (c64 *C64) setScanline(newScanline int) {
-	c64.Vic.scanline = newScanline
-	c64.IO[0x12] = byte(newScanline)                     // Get lower 8 bits
-	c64.IO[0x11] &= 0b01111111                           // Clear bit 7
-	c64.IO[0x11] |= (byte(newScanline&0b100000000) >> 1) // Get scanline bit 8 and push it as bit 7 in $D011
-
-	// According to http://www.zimmers.net/cbmpics/cbm/c64/vic-ii.txt #3.5
-	if c64.Vic.scanline >= 48 && c64.Vic.scanline <= 247 &&
-		(byte(c64.Vic.scanline&0b111) == c64.VerticalScroll()) && c64.DisplayEnabled() {
-		c64.Vic.BadLine = true
-	} else {
-		c64.Vic.BadLine = false
-	}
-}
-
-func (vic *VIC) setBank(bank byte) {
-	vic.bank = bank
-}
-
-func (c64 *C64) VICInit() {
-	c64.Vic.scanline = 0
-	c64.IO[0x11] = 0b00011011 // vertical scroll = 3, height = 25 rows, screen on, text mode, extended bg off
 }
