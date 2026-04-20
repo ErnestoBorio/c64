@@ -5,8 +5,8 @@ import (
 )
 
 const (
-	NTSC                 = 0
-	PAL                  = 1
+	NTSC                 = 1
+	PAL                  = 2
 	CyclesPerScanline    = 63
 	NTSC_cyclesPerSecond = 1022727
 	NTSC_cyclesPerFrame  = 16506
@@ -34,6 +34,10 @@ func Make(c64type int) *C64 {
 	return c64
 }
 
+func (c64 *C64) NTSC() bool {
+	return c64.Type == NTSC
+}
+
 // Initialize the C64 VM instance
 func (c64 *C64) Init() {
 	c64.CPU.Init(c64.readMemory, c64.writeMemory)
@@ -54,6 +58,7 @@ func (c64 *C64) Init() {
 	// IO Registers, 0xD000 .. 0xDFFF
 	c64.IO[0x11] = 0b00011011  // Screen control register #1
 	c64.IO[0xD00] = 0b00111011 // VIC bank selection, RS232 and serial ports
+	c64.VICInit()
 }
 
 // Makes C64 set given address to execute next
@@ -81,12 +86,18 @@ func (c64 *C64) isKernalOn() bool {
 	return c64.RAM[1]&0b10 != 0
 }
 
+// advanceTiming advances machine subsystems using the number of CPU cycles just
+// consumed by the current instruction.
+func (c64 *C64) advanceTiming(cycles int) {
+	c64.advanceVIC(cycles)
+	// CIA, IRQ, and other machine timing will be advanced here.
+}
+
 // Step advances the whole C64 by one CPU instruction and returns the number of
-// CPU cycles consumed. Other machine components should be advanced here from
-// the returned cycle count as timing support is implemented.
+// CPU cycles consumed.
 func (c64 *C64) Step() int {
 	cyclesAdvanced := c64.CPU.Step()
-	// VIC, CIA, IRQ, and other machine timing will be advanced here.
+	c64.advanceTiming(cyclesAdvanced)
 	return cyclesAdvanced
 }
 

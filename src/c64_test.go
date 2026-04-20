@@ -149,3 +149,86 @@ func TestStepAndRunCyclesAgree(t *testing.T) {
 		t.Fatalf("RunCycles left PC at $%04X, want $%04X", runC64.CPU.PC, stepC64.CPU.PC)
 	}
 }
+
+func TestAdvanceTimingUpdatesVICRasterRegisters(t *testing.T) {
+	c64 := Make(NTSC)
+	c64.Init()
+
+	c64.advanceTiming(CyclesPerScanline)
+
+	if c64.Vic.scanline != 1 {
+		t.Fatalf("scanline = %d, want 1", c64.Vic.scanline)
+	}
+	if c64.Vic.cyclesIntoScanline != 0 {
+		t.Fatalf("cyclesIntoScanline = %d, want 0", c64.Vic.cyclesIntoScanline)
+	}
+	if c64.IO[0x12] != 1 {
+		t.Fatalf("$D012 = $%02X, want $01", c64.IO[0x12])
+	}
+	if c64.IO[0x11]&0b10000000 != 0 {
+		t.Fatalf("$D011 bit 7 = 1, want 0 for scanline 1")
+	}
+}
+
+func TestAdvanceTimingWrapsRasterAtFrameEnd(t *testing.T) {
+	c64 := Make(NTSC)
+	c64.Init()
+
+	c64.Vic.scanline = NTSC_scanlines - 1
+	c64.syncRasterRegisters()
+
+	c64.advanceTiming(CyclesPerScanline)
+
+	if c64.Vic.scanline != 0 {
+		t.Fatalf("scanline = %d, want 0 after wrap", c64.Vic.scanline)
+	}
+	if c64.IO[0x12] != 0 {
+		t.Fatalf("$D012 = $%02X, want $00 after wrap", c64.IO[0x12])
+	}
+	if c64.IO[0x11]&0b10000000 != 0 {
+		t.Fatalf("$D011 bit 7 = 1, want 0 after wrap")
+	}
+}
+
+func TestAdvanceTimingSetsRasterMSBForHighScanlines(t *testing.T) {
+	c64 := Make(NTSC)
+	c64.Init()
+
+	c64.advanceTiming(256 * CyclesPerScanline)
+
+	if c64.Vic.scanline != 256 {
+		t.Fatalf("scanline = %d, want 256", c64.Vic.scanline)
+	}
+	if c64.IO[0x12] != 0 {
+		t.Fatalf("$D012 = $%02X, want $00 for scanline 256", c64.IO[0x12])
+	}
+	if c64.IO[0x11]&0b10000000 == 0 {
+		t.Fatalf("$D011 bit 7 = 0, want 1 for scanline 256")
+	}
+}
+
+func TestRunCyclesAdvancesVICTiming(t *testing.T) {
+	c64 := Make(NTSC)
+	c64.Init()
+
+	program := make([]byte, 32)
+	for i := range program {
+		program[i] = 0xEA // NOP, 2 cycles
+	}
+	loadTestProgram(c64, 0x0800, program)
+
+	ran := c64.RunCycles(CyclesPerScanline)
+
+	if ran != 64 {
+		t.Fatalf("RunCycles consumed %d cycles, want 64", ran)
+	}
+	if c64.Vic.scanline != 1 {
+		t.Fatalf("scanline = %d, want 1", c64.Vic.scanline)
+	}
+	if c64.Vic.cyclesIntoScanline != 1 {
+		t.Fatalf("cyclesIntoScanline = %d, want 1", c64.Vic.cyclesIntoScanline)
+	}
+	if c64.IO[0x12] != 1 {
+		t.Fatalf("$D012 = $%02X, want $01", c64.IO[0x12])
+	}
+}
