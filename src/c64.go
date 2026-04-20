@@ -4,16 +4,19 @@ import (
 	"github.com/Drean64/cpu6502"
 )
 
+type TVMode int
+
 const (
-	NTSC                 = 1
-	PAL                  = 2
-	CyclesPerScanline    = 63
-	NTSC_cyclesPerSecond = 1022727
-	NTSC_cyclesPerFrame  = 16506
-	NTSC_scanlines       = 262
-	PAL_cyclesPerSecond  = 985248
-	PAL_cyclesPerFrame   = 19656
-	PAL_scanlines        = 312
+	NTSC TVMode = iota
+	PAL
+)
+
+const (
+	CyclesPerScanline   = 63
+	NTSCCyclesPerSecond = 1022727
+	NTSCScanlines       = 262
+	PALCyclesPerSecond  = 985248
+	PALScanlines        = 312
 )
 
 // C64 models a Commodore 64 virtual machine
@@ -21,12 +24,12 @@ type C64 struct {
 	CPU  cpu6502.CPU
 	RAM  [0x10000]byte // Whole 64KB of RAM
 	IO   [0x1000]byte  // @todo WIP for now just store the bytes raw
-	Type int           // NTSC or PAL
+	Type TVMode        // NTSC or PAL
 	Vic  VIC
 }
 
-// Make creates and initializes a C64 instance.
-func Make(c64type int) *C64 {
+// Make creates a C64 instance.
+func Make(c64type TVMode) *C64 {
 	c64 := new(C64)
 	c64.CPU = cpu6502.CPU{}
 	c64.Type = c64type // PAL | NTSC
@@ -38,10 +41,24 @@ func (c64 *C64) NTSC() bool {
 	return c64.Type == NTSC
 }
 
+// CyclesPerFrame returns the number of CPU cycles in one video frame for the
+// current video standard.
+func (c64 *C64) CyclesPerFrame() int {
+	return c64.totalScanlines() * CyclesPerScanline
+}
+
+func (c64 *C64) SoftReset() {
+	c64.CPU.Reset()
+}
+
+func (c64 *C64) HardReset() {
+	c64.Init()
+	c64.CPU.Reset()
+}
+
 // Initialize the C64 VM instance
 func (c64 *C64) Init() {
 	c64.CPU.Init(c64.readMemory, c64.writeMemory)
-	c64.CPU.Reset()
 
 	// Init memory. Mirrored memory has to be set by appropriate function calls. Non mirrored memory can be set directly
 	// Initial RAM state

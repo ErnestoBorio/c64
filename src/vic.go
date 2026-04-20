@@ -12,11 +12,13 @@ type VIC struct {
 	cyclesIntoScanline int
 }
 
+// totalScanlines returns the number of raster lines per frame for the current
+// video standard.
 func (c64 *C64) totalScanlines() int {
 	if c64.NTSC() {
-		return NTSC_scanlines
+		return NTSCScanlines
 	}
-	return PAL_scanlines
+	return PALScanlines
 }
 
 func (c64 *C64) syncRasterRegisters() {

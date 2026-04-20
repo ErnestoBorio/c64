@@ -13,6 +13,18 @@ func TestInstanciation(t *testing.T) {
 	c64.CPU.Reset()
 }
 
+func TestCyclesPerFrameDependsOnTVMode(t *testing.T) {
+	ntsc := Make(NTSC)
+	pal := Make(PAL)
+
+	if ntsc.CyclesPerFrame() != NTSCScanlines*CyclesPerScanline {
+		t.Fatalf("NTSC CyclesPerFrame = %d, want %d", ntsc.CyclesPerFrame(), NTSCScanlines*CyclesPerScanline)
+	}
+	if pal.CyclesPerFrame() != PALScanlines*CyclesPerScanline {
+		t.Fatalf("PAL CyclesPerFrame = %d, want %d", pal.CyclesPerFrame(), PALScanlines*CyclesPerScanline)
+	}
+}
+
 func TestRoms(t *testing.T) {
 	const kernalSha512 = "c6ef3021ab08151bd93399ed8c2a97896cb1fb1e2820865622ce1a9169242b48315c71f58aba26b7f720e872b9b941e651378a7a3d99218e1c104d55e412d25c"
 	const basicSha512 = "683c3ca9bf14d71b988b35381843a9d8f4e083254b45f2f2a27c1a1a3508090134156171de56604fe3be65ae0d4efbd24e0923d7f6c19f3449c25212711e2320"
@@ -174,7 +186,7 @@ func TestAdvanceTimingWrapsRasterAtFrameEnd(t *testing.T) {
 	c64 := Make(NTSC)
 	c64.Init()
 
-	c64.Vic.scanline = NTSC_scanlines - 1
+	c64.Vic.scanline = NTSCScanlines - 1
 	c64.syncRasterRegisters()
 
 	c64.advanceTiming(CyclesPerScanline)
