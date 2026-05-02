@@ -17,22 +17,29 @@ const (
 	NTSCScanlines       = 262
 	PALCyclesPerSecond  = 985248
 	PALScanlines        = 312
+	IRQCycles           = 7
+)
+
+type IRQSource byte
+
+const (
+	IRQSourceVIC IRQSource = 1 << iota
+	IRQSourceCIA
 )
 
 // C64 models a Commodore 64 virtual machine
 type C64 struct {
-	CPU  cpu6502.CPU
-	RAM  [0x10000]byte // Whole 64KB of RAM
-	IO   [0x1000]byte  // @todo WIP for now just store the bytes raw
-	Type TVMode        // NTSC or PAL
-	Vic  VIC
+	CPU        cpu6502.CPU
+	RAM        [0x10000]byte // Whole 64KB of RAM
+	IO         [0x1000]byte  // @todo WIP for now just store the bytes raw
+	Type       TVMode        // NTSC or PAL
+	Vic        VIC
+	irqSources IRQSource
 }
 
 // Make creates a C64 instance.
 func Make(c64type TVMode) *C64 {
-	c64 := new(C64)
-	c64.CPU = cpu6502.CPU{}
-	c64.Type = c64type // PAL | NTSC
+	c64 := &C64{Type: c64type} // PAL | NTSC
 	c64.Init()
 	return c64
 }
@@ -103,6 +110,18 @@ func (c64 *C64) isKernalOn() bool {
 	return c64.RAM[1]&0b10 != 0
 }
 
+func (c64 *C64) AssertIRQ(source IRQSource) {
+	c64.irqSources |= source
+}
+
+func (c64 *C64) ClearIRQ(source IRQSource) {
+	c64.irqSources &^= source
+}
+
+func (c64 *C64) IRQLine() bool {
+	return c64.irqSources != 0
+}
+
 // advanceTiming advances machine subsystems using the number of CPU cycles just
 // consumed by the current instruction.
 func (c64 *C64) advanceTiming(cycles int) {
@@ -113,6 +132,12 @@ func (c64 *C64) advanceTiming(cycles int) {
 // Step advances the whole C64 by one CPU instruction and returns the number of
 // CPU cycles consumed.
 func (c64 *C64) Step() int {
+	if c64.IRQLine() && !c64.CPU.Status.NoInterrupt {
+		c64.CPU.IRQ()
+		c64.advanceTiming(IRQCycles)
+		return IRQCycles
+	}
+
 	cyclesAdvanced := c64.CPU.Step()
 	c64.advanceTiming(cyclesAdvanced)
 	return cyclesAdvanced

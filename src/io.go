@@ -36,13 +36,26 @@ func (c64 *C64) ReadIO(address uint16) byte {
 // address is assumed to be $D000..$DFFF
 func (c64 *C64) WriteIO(address uint16, value byte) {
 	if address <= 0xD3FF { // VIC video registers
-		address &= 0x3F     // $D040..$D3FF are mirrors of $D000..$D03F
-		if address < 0x20 { // Various VIC registers
-			c64.IO[address] = value
-		} else if address < 0x2F { // 4-bit color registers
+		address &= 0x3F // $D040..$D3FF are mirrors of $D000..$D03F
+		switch address {
+		case 0x11:
+			c64.setRasterCompareHigh(value)
+			c64.IO[address] = (c64.IO[address] & 0b10000000) | (value & 0b01111111)
+		case 0x12:
+			c64.setRasterCompareLow(value)
+		case 0x19:
+			c64.IO[address] &^= value & vicIRQFlagRaster
+			c64.updateVICIRQLine()
+		case 0x1A:
+			c64.IO[address] = value & vicIRQFlagRaster
+			c64.updateVICIRQLine()
+		case 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E:
 			c64.IO[address] = 0b11110000 | value // higher 4 bits are always 1
+		case 0x2F, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F:
+			// Unused bytes in $D02F..$D03F ignore writes.
+		default:
+			c64.IO[address] = value
 		}
-		// else unused bytes in $D02F..$D03F,  ignore the write.
 	} else { // Generic IO write WIP
 		c64.IO[address&0xFFF] = value
 		// if address == 0xDD00 {

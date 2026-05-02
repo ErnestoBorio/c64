@@ -162,6 +162,169 @@ func TestStepAndRunCyclesAgree(t *testing.T) {
 	}
 }
 
+func TestIRQLineTracksSources(t *testing.T) {
+	c64 := Make(NTSC)
+	c64.Init()
+
+	if c64.IRQLine() {
+		t.Fatalf("IRQ line is asserted after init")
+	}
+
+	c64.AssertIRQ(IRQSourceVIC)
+	if !c64.IRQLine() {
+		t.Fatalf("IRQ line is not asserted after VIC source")
+	}
+
+	c64.AssertIRQ(IRQSourceCIA)
+	c64.ClearIRQ(IRQSourceVIC)
+	if !c64.IRQLine() {
+		t.Fatalf("IRQ line was cleared while CIA source is still asserted")
+	}
+
+	c64.ClearIRQ(IRQSourceCIA)
+	if c64.IRQLine() {
+		t.Fatalf("IRQ line is still asserted after clearing all sources")
+	}
+}
+
+func TestStepServicesAssertedIRQWhenInterruptsEnabled(t *testing.T) {
+	c64 := Make(NTSC)
+	c64.Init()
+	c64.RAM[1] = 0 // Read IRQ vector from RAM instead of Kernal ROM.
+	c64.RAM[0xFFFE] = 0x00
+	c64.RAM[0xFFFF] = 0x09
+	loadTestProgram(c64, 0x0800, []byte{0xEA}) // NOP, should not execute before IRQ.
+	c64.CPU.Status.NoInterrupt = false
+	c64.AssertIRQ(IRQSourceVIC)
+
+	cycles := c64.Step()
+
+	if cycles != IRQCycles {
+		t.Fatalf("Step consumed %d cycles, want %d", cycles, IRQCycles)
+	}
+	if c64.CPU.PC != 0x0900 {
+		t.Fatalf("PC = $%04X, want IRQ vector $0900", c64.CPU.PC)
+	}
+	if !c64.CPU.Status.NoInterrupt {
+		t.Fatalf("interrupt disable flag is clear after IRQ service")
+	}
+	if c64.Vic.cyclesIntoScanline != IRQCycles {
+		t.Fatalf("cyclesIntoScanline = %d, want %d", c64.Vic.cyclesIntoScanline, IRQCycles)
+	}
+}
+
+func TestStepDoesNotServiceIRQWhenInterruptsDisabled(t *testing.T) {
+	c64 := Make(NTSC)
+	c64.Init()
+	c64.RAM[1] = 0
+	c64.RAM[0xFFFE] = 0x00
+	c64.RAM[0xFFFF] = 0x09
+	loadTestProgram(c64, 0x0800, []byte{0xEA}) // NOP
+	c64.CPU.Status.NoInterrupt = true
+	c64.AssertIRQ(IRQSourceVIC)
+
+	cycles := c64.Step()
+
+	if cycles != 2 {
+		t.Fatalf("Step consumed %d cycles, want NOP's 2 cycles", cycles)
+	}
+	if c64.CPU.PC != 0x0801 {
+		t.Fatalf("PC = $%04X, want $0801 after NOP", c64.CPU.PC)
+	}
+	if !c64.IRQLine() {
+		t.Fatalf("IRQ line was cleared while source is still asserted")
+	}
+}
+
+func TestVICRasterIRQAssertsOnCompareLine(t *testing.T) {
+	c64 := Make(NTSC)
+	c64.Init()
+	c64.WriteIO(0xD012, 3)
+	c64.WriteIO(0xD01A, vicIRQFlagRaster)
+
+	c64.advanceTiming(2 * CyclesPerScanline)
+	if c64.IO[0x19]&vicIRQFlagRaster != 0 {
+		t.Fatalf("raster IRQ flag set before compare line")
+	}
+	if c64.IRQLine() {
+		t.Fatalf("IRQ line asserted before compare line")
+	}
+
+	c64.advanceTiming(CyclesPerScanline)
+	if c64.Vic.scanline != 3 {
+		t.Fatalf("scanline = %d, want 3", c64.Vic.scanline)
+	}
+	if c64.IO[0x19]&vicIRQFlagRaster == 0 {
+		t.Fatalf("raster IRQ flag is clear on compare line")
+	}
+	if !c64.IRQLine() {
+		t.Fatalf("IRQ line is not asserted on enabled raster IRQ")
+	}
+}
+
+func TestVICRasterIRQClearReleasesIRQLine(t *testing.T) {
+	c64 := Make(NTSC)
+	c64.Init()
+	c64.WriteIO(0xD012, 1)
+	c64.WriteIO(0xD01A, vicIRQFlagRaster)
+	c64.advanceTiming(CyclesPerScanline)
+
+	if !c64.IRQLine() {
+		t.Fatalf("IRQ line is not asserted before clearing raster flag")
+	}
+
+	c64.WriteIO(0xD019, vicIRQFlagRaster)
+	if c64.IO[0x19]&vicIRQFlagRaster != 0 {
+		t.Fatalf("raster IRQ flag is still set after write-one-to-clear")
+	}
+	if c64.IRQLine() {
+		t.Fatalf("IRQ line is still asserted after clearing only pending VIC flag")
+	}
+}
+
+func TestVICRasterIRQFlagCanBePendingWhileDisabled(t *testing.T) {
+	c64 := Make(NTSC)
+	c64.Init()
+	c64.WriteIO(0xD012, 2)
+
+	c64.advanceTiming(2 * CyclesPerScanline)
+	if c64.IO[0x19]&vicIRQFlagRaster == 0 {
+		t.Fatalf("raster IRQ flag is clear on compare line")
+	}
+	if c64.IRQLine() {
+		t.Fatalf("IRQ line asserted while raster IRQ mask is disabled")
+	}
+
+	c64.WriteIO(0xD01A, vicIRQFlagRaster)
+	if !c64.IRQLine() {
+		t.Fatalf("IRQ line not asserted after enabling pending raster IRQ")
+	}
+}
+
+func TestVICRasterIRQUsesHighCompareBitFromD011(t *testing.T) {
+	c64 := Make(NTSC)
+	c64.Init()
+	c64.WriteIO(0xD011, 0b10011011)
+	c64.WriteIO(0xD012, 0)
+	c64.WriteIO(0xD01A, vicIRQFlagRaster)
+
+	c64.advanceTiming(255 * CyclesPerScanline)
+	if c64.IO[0x19]&vicIRQFlagRaster != 0 {
+		t.Fatalf("raster IRQ flag set before line 256")
+	}
+
+	c64.advanceTiming(CyclesPerScanline)
+	if c64.Vic.scanline != 256 {
+		t.Fatalf("scanline = %d, want 256", c64.Vic.scanline)
+	}
+	if c64.IO[0x19]&vicIRQFlagRaster == 0 {
+		t.Fatalf("raster IRQ flag is clear on line 256")
+	}
+	if !c64.IRQLine() {
+		t.Fatalf("IRQ line is not asserted on line 256")
+	}
+}
+
 func TestAdvanceTimingUpdatesVICRasterRegisters(t *testing.T) {
 	c64 := Make(NTSC)
 	c64.Init()
